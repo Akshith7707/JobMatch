@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuthStore } from '@/lib/store';
-import { Zap, LogOut, LayoutDashboard } from 'lucide-react';
+import { Zap, LogOut, LayoutDashboard, Search, Bookmark, Briefcase, GraduationCap } from 'lucide-react';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -10,6 +10,18 @@ export default function Navbar() {
   const handleLogout = () => {
     logout();
     router.push('/');
+  };
+
+  const navLink = (href, icon, label) => {
+    const active = router.pathname === href;
+    return (
+      <Link href={href} className={`flex items-center gap-1.5 text-sm transition-colors ${
+        active ? 'text-brand-600 font-medium' : 'text-gray-600 hover:text-brand-600'
+      }`}>
+        {icon}
+        {label}
+      </Link>
+    );
   };
 
   return (
@@ -22,13 +34,14 @@ export default function Navbar() {
             <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-medium">AI</span>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
+            {navLink('/jobs', <Search className="h-4 w-4" />, 'Browse Jobs')}
             {isAuthenticated ? (
               <>
-                <Link href="/dashboard" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-brand-600 transition-colors">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Link>
+                {navLink('/dashboard', <LayoutDashboard className="h-4 w-4" />, 'Dashboard')}
+                {navLink('/applications', <Briefcase className="h-4 w-4" />, 'Tracker')}
+                {navLink('/learning', <GraduationCap className="h-4 w-4" />, 'Learn')}
+                {navLink('/saved', <Bookmark className="h-4 w-4" />, 'Saved')}
                 <span className="text-sm text-gray-500">{user?.full_name}</span>
                 <button onClick={handleLogout} className="text-gray-400 hover:text-gray-600 transition-colors">
                   <LogOut className="h-5 w-5" />

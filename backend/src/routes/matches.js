@@ -3,6 +3,8 @@ const pool = require('../db/pool');
 const { authenticate } = require('../middleware/auth');
 const { learningAgent } = require('../agents/learningAgent');
 
+const PROTECTED_STATUSES = new Set(['bookmarked', 'applied']);
+
 router.post('/feedback', authenticate, async (req, res, next) => {
   try {
     const { match_id, feedback_type } = req.body;
@@ -28,10 +30,13 @@ router.post('/feedback', authenticate, async (req, res, next) => {
       click: 'viewed',
     };
 
-    if (statusMap[feedback_type]) {
+    const currentStatus = matchCheck.rows[0].status;
+    const newStatus = statusMap[feedback_type];
+
+    if (newStatus && !(feedback_type === 'click' && PROTECTED_STATUSES.has(currentStatus))) {
       await pool.query(
         'UPDATE matches SET status = $1, updated_at = NOW() WHERE id = $2',
-        [statusMap[feedback_type], match_id]
+        [newStatus, match_id]
       );
     }
 

@@ -47,6 +47,30 @@ export const candidates = {
   },
   submitGitHub: (github_url) => api.post('/candidates/github', { github_url }),
   getRecommendations: () => api.get('/candidates/recommendations'),
+  getBookmarked: () => api.get('/candidates/bookmarked'),
+  getApplied: () => api.get('/candidates/applied'),
+  tailorResume: (job_id) => api.post('/candidates/tailor-resume', { job_id }),
+  generateTailoredResume: (job_id, tailor_suggestions) =>
+    api.post('/candidates/generate-tailored-resume', { job_id, tailor_suggestions }),
+  generateCoverLetter: (job_id) => api.post('/candidates/cover-letter', { job_id }),
+  getInterviewPrep: (job_id) => api.post('/candidates/interview-prep', { job_id }),
+  getLearningPath: () => api.get('/candidates/learning-path'),
+  getAnalytics: () => api.get('/candidates/analytics'),
+  getResumeVersions: () => api.get('/candidates/resume-versions'),
+  createResumeVersion: (data) => api.post('/candidates/resume-versions', data),
+  activateResumeVersion: (id) => api.put(`/candidates/resume-versions/${id}/activate`),
+  getSalaryInsights: () => api.get('/candidates/salary-insights'),
+  getNotifications: () => api.get('/candidates/notifications'),
+  markNotificationsRead: () => api.put('/candidates/notifications/read-all'),
+  getApplications: () => api.get('/candidates/applications'),
+  createApplication: (data) => api.post('/candidates/applications', data),
+  updateApplication: (id, data) => api.put(`/candidates/applications/${id}`, data),
+  startMockInterview: (job_id) => api.post('/candidates/mock-interview/start', { job_id }),
+  sendMockMessage: (id, message) => api.post(`/candidates/mock-interview/${id}/message`, { message }),
+  endMockInterview: (id) => api.post(`/candidates/mock-interview/${id}/end`),
+  getMockInterviews: () => api.get('/candidates/mock-interviews'),
+  getCompanyResearch: (company) => api.get(`/candidates/company-research/${encodeURIComponent(company)}`),
+  getPortfolio: (userId) => api.get(`/candidates/portfolio/${userId}`),
 };
 
 export const jobs = {
@@ -54,6 +78,7 @@ export const jobs = {
   get: (id) => api.get(`/jobs/${id}`),
   scrape: () => api.post('/jobs/scrape'),
   sourceStats: () => api.get('/jobs/stats/sources'),
+  getSimilar: (id) => api.get(`/jobs/${id}/similar`),
 };
 
 export const matches = {

@@ -37,12 +37,15 @@ const matchingAgent = {
     if (embeddingScore > 70) reasons.push('High semantic profile match');
     if (reasons.length === 0) reasons.push('Partial match based on available data');
 
+    const skillGap = this.computeSkillGap(candidate, job);
+
     return {
       match_score: matchScore,
       skill_score: Math.round(skillScore * 100) / 100,
       experience_score: Math.round(experienceScore * 100) / 100,
       project_score: Math.round(projectScore * 100) / 100,
       match_reasons: reasons,
+      skill_gap: skillGap,
       detailed_breakdown: {
         skill_score: skillScore,
         experience_score: experienceScore,
@@ -92,6 +95,51 @@ const matchingAgent = {
       : 20;
 
     return requiredScore + preferredScore;
+  },
+
+  computeSkillGap(candidate, job) {
+    const candidateSkills = (candidate.skills || []).map(s =>
+      (typeof s === 'string' ? s : s.name).toLowerCase()
+    );
+    const candidateTech = (candidate.tech_stack || []).map(t => t.toLowerCase());
+    const allCandidateSkills = [...new Set([...candidateSkills, ...candidateTech])];
+
+    let requiredSkills = (job.required_skills || []).map(s => ({
+      name: (typeof s === 'string' ? s : s.name),
+      importance: (typeof s === 'string' ? 'high' : s.importance) || 'high',
+    }));
+
+    const preferredSkills = (job.preferred_skills || []).map(s => ({
+      name: (typeof s === 'string' ? s : s.name),
+      importance: 'nice-to-have',
+    }));
+
+    if (requiredSkills.length === 0) {
+      const tags = (job.tags || []).filter(t => typeof t === 'string' && t.length > 0);
+      requiredSkills = tags.map(t => ({ name: t, importance: 'high' }));
+    }
+
+    const allJobSkills = [...requiredSkills, ...preferredSkills];
+    const matched = [];
+    const missing = [];
+
+    for (const skill of allJobSkills) {
+      const lower = skill.name.toLowerCase();
+      const found = allCandidateSkills.some(cs => cs.includes(lower) || lower.includes(cs));
+      if (found) {
+        matched.push({ name: skill.name, importance: skill.importance });
+      } else {
+        missing.push({ name: skill.name, importance: skill.importance });
+      }
+    }
+
+    return {
+      matched,
+      missing,
+      coverage: allJobSkills.length > 0
+        ? Math.round((matched.length / allJobSkills.length) * 100)
+        : 0,
+    };
   },
 
   computeExperienceScore(candidate, job) {
@@ -173,7 +221,7 @@ const matchingAgent = {
             candidate.id, jobId, result.match_score, result.skill_score,
             result.experience_score, result.project_score,
             JSON.stringify(result.match_reasons),
-            JSON.stringify(result.detailed_breakdown),
+            JSON.stringify({ ...result.detailed_breakdown, skill_gap: result.skill_gap }),
           ]
         );
 
@@ -237,7 +285,7 @@ const matchingAgent = {
             candidateId, job.id, result.match_score, result.skill_score,
             result.experience_score, result.project_score,
             JSON.stringify(result.match_reasons),
-            JSON.stringify(result.detailed_breakdown),
+            JSON.stringify({ ...result.detailed_breakdown, skill_gap: result.skill_gap }),
           ]
         );
 
