@@ -7,3 +7,5 @@ dist/
 *.log
 .DS_Store
 uploads/
+# Windows reserved name accidentally created by shell redirects
+frontend/nul
