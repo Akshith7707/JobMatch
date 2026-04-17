@@ -50,7 +50,10 @@ const profileAgent = {
   },
 
   async analyzeGitHub(githubUrl) {
-    const username = githubUrl.replace(/\/$/, '').split('/').pop();
+    const cleaned = githubUrl.replace(/\/+$/, '').replace(/\/+/g, '/').replace('https:/', 'https://');
+    const parts = cleaned.split('/').filter(Boolean);
+    const username = parts[parts.length - 1];
+    console.log(`GitHub analysis: URL="${githubUrl}" -> username="${username}"`);
 
     try {
       const headers = process.env.GITHUB_TOKEN

@@ -179,12 +179,6 @@ const matchingAgent = {
     if (jobResult.rows.length === 0) throw new Error('Job not found');
     const job = jobResult.rows[0];
 
-    if (!job.job_embedding) {
-      await jobParsingAgent.generateEmbedding(jobId);
-      const refreshed = await pool.query('SELECT * FROM jobs WHERE id = $1', [jobId]);
-      Object.assign(job, refreshed.rows[0]);
-    }
-
     const candidates = await pool.query(
       'SELECT * FROM candidates WHERE profile_complete = true'
     );
@@ -197,16 +191,6 @@ const matchingAgent = {
     const matches = [];
 
     for (const candidate of candidates.rows) {
-      if (!candidate.skill_embedding) {
-        try {
-          await profileAgent.generateEmbedding(candidate.id);
-          const refreshed = await pool.query('SELECT * FROM candidates WHERE id = $1', [candidate.id]);
-          Object.assign(candidate, refreshed.rows[0]);
-        } catch (err) {
-          console.log('Embedding skipped for candidate (will match without it):', err.message);
-        }
-      }
-
       const result = await this.computeMatchScore(candidate, job, weights);
 
       if (result.match_score > 20) {
@@ -241,16 +225,6 @@ const matchingAgent = {
     if (candResult.rows.length === 0) throw new Error('Candidate not found');
     const candidate = candResult.rows[0];
 
-    if (!candidate.skill_embedding) {
-      try {
-        await profileAgent.generateEmbedding(candidateId);
-        const refreshed = await pool.query('SELECT * FROM candidates WHERE id = $1', [candidateId]);
-        Object.assign(candidate, refreshed.rows[0]);
-      } catch (err) {
-        console.log('Embedding skipped for candidate (will match without it):', err.message);
-      }
-    }
-
     const jobs = await pool.query("SELECT * FROM jobs WHERE status = 'active'");
 
     const weightResult = await pool.query(
@@ -261,16 +235,6 @@ const matchingAgent = {
     const matches = [];
 
     for (const job of jobs.rows) {
-      if (!job.job_embedding) {
-        try {
-          await jobParsingAgent.generateEmbedding(job.id);
-          const refreshed = await pool.query('SELECT * FROM jobs WHERE id = $1', [job.id]);
-          Object.assign(job, refreshed.rows[0]);
-        } catch (err) {
-          console.log('Embedding skipped for job (will match without it):', err.message);
-        }
-      }
-
       const result = await this.computeMatchScore(candidate, job, weights);
 
       if (result.match_score > 20) {
@@ -297,6 +261,7 @@ const matchingAgent = {
       }
     }
 
+    console.log(`Matched candidate ${candidateId} against ${jobs.rows.length} jobs -> ${matches.length} matches`);
     return matches.sort((a, b) => b.match_score - a.match_score);
   },
 };
