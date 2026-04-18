@@ -15,6 +15,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isVercel = process.env.VERCEL === '1';
 
 app.set('etag', false);
 app.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
@@ -44,8 +45,10 @@ app.get('/api/health', (req, res) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`SkillSync API running on port ${PORT}`);
-});
+if (!isVercel) {
+  app.listen(PORT, () => {
+    console.log(`SkillSync API running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
