@@ -90,25 +90,71 @@ function SkillGapBar({ skillGap }) {
   );
 }
 
-function ScoreRing({ score, label, size = 80 }) {
-  const radius = (size - 8) / 2;
+function ScoreColumn({ label, score, subLabel, subValue, size = 92 }) {
+  const stroke = 6;
+  const radius = (size - stroke * 2) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? '#22c55e' : score >= 60 ? '#3b82f6' : score >= 40 ? '#eab308' : '#ef4444';
+  const n = Number(score);
+  const clamped = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+  const offset = circumference - (clamped / 100) * circumference;
+  const color =
+    clamped >= 80 ? '#15803d' : clamped >= 60 ? '#1d4ed8' : clamped >= 40 ? '#b45309' : '#b91c1c';
 
   return (
-    <div className="flex flex-col items-center">
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke="#f3f4f6" strokeWidth="6" fill="none" />
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeWidth="6" fill="none"
-          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
-          className="transition-all duration-700"
-        />
-      </svg>
-      <span className="text-xl font-bold -mt-[calc(50%+10px)]" style={{ color }}>{score}</span>
-      <span className="text-xs text-gray-500 mt-5">{label}</span>
+    <div className="flex min-w-0 flex-col items-center gap-3 text-center">
+      <p className="min-h-[2.5rem] max-w-[10rem] text-[0.7rem] font-semibold uppercase leading-snug tracking-wide text-brand-800">
+        {label}
+      </p>
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg
+          width={size}
+          height={size}
+          className="absolute inset-0 -rotate-90"
+          aria-hidden
+        >
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#e7e5e4"
+            strokeWidth={stroke}
+            fill="none"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="transition-all duration-700"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span
+            className="font-display text-[1.65rem] font-bold tabular-nums leading-none"
+            style={{ color }}
+          >
+            {Math.round(clamped)}
+          </span>
+        </div>
+      </div>
+      {subLabel != null && subLabel !== '' && (
+        <div className="flex w-full flex-col gap-0.5 border-t border-brand-200/80 pt-3">
+          <p className="text-[0.65rem] font-medium uppercase tracking-wide text-brand-600">{subLabel}</p>
+          <p className="text-sm font-semibold text-brand-900 break-words">{subValue ?? '—'}</p>
+        </div>
+      )}
     </div>
   );
+}
+
+// Legacy alias: older JSX uses <ScoreRing score label /> only (no sub-metrics row)
+function ScoreRing({ score, label }) {
+  return <ScoreColumn label={label} score={score} />;
 }
 
 function TailorModal({ data, onClose }) {
@@ -153,6 +199,10 @@ function TailorModal({ data, onClose }) {
   };
 
   const handleDownload = () => {
+    if (!generatedResume || typeof generatedResume !== 'string') {
+      toast.error('Generate the resume first, then download.');
+      return;
+    }
     const safeName = (data.job_title || 'job').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
     const blob = new Blob([generatedResume], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -193,26 +243,33 @@ function TailorModal({ data, onClose }) {
           </button>
         </div>
 
-        {/* Score Cards */}
-        <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 border-b border-gray-100">
-          <ScoreRing score={ats.ats_score || 0} label="ATS Score" />
-          <ScoreRing score={data.match_score_after_tailoring || 0} label="After Tailoring" />
-          <ScoreRing score={ats.experience_relevance_score || 0} label="Relevance" />
-        </div>
-
-        {/* Sub-scores */}
-        <div className="grid grid-cols-3 gap-3 px-6 py-3 border-b border-gray-100">
-          <div className="text-center">
-            <div className="text-sm font-bold text-gray-700">{ats.keyword_density_score || 0}%</div>
-            <div className="text-xs text-gray-500">Keywords</div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm font-bold text-gray-700">{ats.section_score || 0}%</div>
-            <div className="text-xs text-gray-500">Formatting</div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm font-bold text-gray-700">{tailor.confidence || 'N/A'}</div>
-            <div className="text-xs text-gray-500">Confidence</div>
+        {/* Score columns: label → ring + main number → sub-metric (no overlapping rows) */}
+        <div className="border-b border-brand-200 bg-brand-50/80 px-4 py-6 sm:px-6">
+          <div className="mx-auto grid max-w-2xl grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-4">
+            <ScoreColumn
+              label="ATS score"
+              score={ats.ats_score || 0}
+              subLabel="Keywords"
+              subValue={`${ats.keyword_density_score ?? 0}%`}
+            />
+            <ScoreColumn
+              label="Match after tailoring"
+              score={data.match_score_after_tailoring || 0}
+              subLabel="Formatting"
+              subValue={`${ats.section_score ?? 0}%`}
+            />
+            <ScoreColumn
+              label="Relevance"
+              score={ats.experience_relevance_score || 0}
+              subLabel="Confidence"
+              subValue={
+                typeof tailor.confidence === 'string'
+                  ? tailor.confidence
+                  : tailor.confidence != null
+                    ? String(tailor.confidence)
+                    : '—'
+              }
+            />
           </div>
         </div>
 

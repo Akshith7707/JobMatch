@@ -10,7 +10,14 @@ function errorHandler(err, req, res, _next) {
   }
 
   if (err.code === '23505') {
-    return res.status(409).json({ error: 'Resource already exists' });
+    const emailTaken =
+      err.constraint === 'users_email_key' ||
+      (typeof err.detail === 'string' && err.detail.includes('(email)'));
+    return res.status(409).json({
+      error: emailTaken
+        ? 'An account with this email already exists. Try logging in or use a different email.'
+        : 'Resource already exists',
+    });
   }
 
   res.status(err.status || 500).json({

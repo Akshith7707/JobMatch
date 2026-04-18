@@ -15,18 +15,31 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: 'Server misconfiguration: JWT_SECRET is not set' });
+    }
+
     const { email, password, full_name } = req.body;
     const password_hash = await bcrypt.hash(password, 12);
 
-    const result = await pool.query(
-      `INSERT INTO users (email, password_hash, full_name)
-       VALUES ($1, $2, $3) RETURNING id, email, full_name, created_at`,
-      [email, password_hash, full_name]
-    );
-
-    const user = result.rows[0];
-
-    await pool.query('INSERT INTO candidates (user_id) VALUES ($1)', [user.id]);
+    const client = await pool.connect();
+    let user;
+    try {
+      await client.query('BEGIN');
+      const result = await client.query(
+        `INSERT INTO users (email, password_hash, full_name)
+         VALUES ($1, $2, $3) RETURNING id, email, full_name, created_at`,
+        [email, password_hash, full_name]
+      );
+      user = result.rows[0];
+      await client.query('INSERT INTO candidates (user_id) VALUES ($1)', [user.id]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
@@ -48,6 +61,10 @@ router.post('/login', [
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: 'Server misconfiguration: JWT_SECRET is not set' });
     }
 
     const { email, password } = req.body;
