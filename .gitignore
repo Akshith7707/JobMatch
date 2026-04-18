@@ -9,3 +9,6 @@ dist/
 uploads/
 # Windows reserved name accidentally created by shell redirects
 frontend/nul
+PITCH-RECORDING_SCRIPT.md
+PITCH-TIMELINE.md
+pitch.md
